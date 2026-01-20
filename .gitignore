@@ -1,0 +1,6 @@
+.env
+temp_voz.mp3
+__pycache__/
+*.spec
+dist/
+build/
