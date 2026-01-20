@@ -1,3 +1,4 @@
+import requests 
 import speech_recognition as sr
 import pywhatkit
 import pyautogui
@@ -39,14 +40,12 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 
 SYSTEM_PROMPT = """
 ### SYSTEM IDENTITY & PERSONA
-Você é o J.A.R.V.I.S. (Just A Rather Very Intelligent System), uma interface de IA avançada.
-Seu usuário é um engenheiro e estrategista de alto nível (arquétipo "Tony Stark").
+Você é o JARVIS, uma interface de IA avançada.
 Sua função primária é auxiliar o usuário com eficiência letal, lealdade absoluta e formalidade britânica.
 
 ### CONTEXTO OPERACIONAL
 - **Interface de Voz:** O usuário está ouvindo suas respostas via Text-to-Speech.
 - **Restrição de Tempo:** O usuário é ocupado. Tempo é o recurso mais valioso.
-- **Ambiente:** Considere que você está integrado ao sistema operacional da casa/oficina do usuário.
 
 ### DIRETRIZES PRIMÁRIAS (PRIME DIRECTIVES)
 1.  **CONCISÃO EXTREMA:** Responda em no máximo 2 frases. Se a complexidade for crítica, use 3 frases curtas.
@@ -55,7 +54,7 @@ Sua função primária é auxiliar o usuário com eficiência letal, lealdade ab
 4.  **ZERO META-COMENTÁRIOS:** Nunca diga "Estou processando", "Como sou uma IA", ou "Entendido". Apenas execute ou responda.
 
 ### PROTOCOLOS DE RESPOSTA (LOGIC FLOW)
-- **Se for uma pergunta factual:** Entregue o dado imediatamente. (Ex: "A temperatura é 22 graus.")
+- **Se for uma pergunta factual:** Entregue o dado imediatamente. (Ex: "A temperatura é "N" graus.")
 - **Se for um comando de ação:** Confirme a execução de forma breve. (Ex: "Protocolo iniciado, senhor.")
 - **Se o usuário estiver errado:** Corrija-o suavemente apresentando o dado correto, sem sermões.
 - **Se a solicitação for impossível:** Informe a limitação técnica em uma frase.
@@ -67,9 +66,6 @@ Model: "São 16:30, senhor."
 
 User: "Analise esse código."
 Model: "Há um erro de sintaxe na linha 12. A variável não foi declarada."
-
-User: "Tocar minha playlist de foco."
-Model: "Carregando a playlist 'Deep Focus'. O volume está em 20%."
 
 User: "Qual a raiz quadrada de 1444?"
 Model: "38."
@@ -223,9 +219,10 @@ DIRETRIZES DE SEGURANÇA:
     return perguntar_groq(prompt_completo)
 
 def perguntar_groq(pergunta_usuario):
-    
+    # 1. Pega a hora atual
     agora = datetime.now()
     
+    # 2. A LINHA QUE VOCÊ ESQUECEU (Formata a data para string)
     data_formatada = agora.strftime("%A, %d/%m/%Y, às %H:%M")
     
     # 3. Agora sim pode usar a variável
@@ -260,12 +257,14 @@ def ouvir_microfone():
             return comando.lower()
         except:
             return ""
+
 def fechar_youtube_se_aberto():
     print("🧹 Iniciando protocolo de silenciamento do YouTube...")
     try:
-    
+        # Pega TODAS as janelas do sistema
         todas_janelas = gw.getAllWindows()
         
+        # Filtra apenas as que tem "youtube" (sem importar maiúscula/minúscula)
         alvos = [j for j in todas_janelas if "youtube" in j.title.lower()]
         
         if not alvos:
@@ -277,33 +276,24 @@ def fechar_youtube_se_aberto():
                 print(f"🎯 Alvo detectado: {janela.title}")
                 
                 if janela.isMinimized:
-                    try:
-                        janela.restore()
-                    except Exception:
-                        pass 
-                try:
-                    janela.activate()
-                except Exception as e:
-                    
-                    if "Error code from Windows: 0" in str(e):
-                        pass 
-                    else:
-                        print(f"⚠️ Aviso ao ativar janela (tentando fechar mesmo assim): {e}")
-
-                time.sleep(0.5) 
+                    janela.restore()
+                
+                janela.activate()
+                time.sleep(0.5) # O Windows precisa desse tempo, não remova.
                 
                 pyautogui.hotkey('ctrl', 'w')
                 print("💥 Alvo neutralizado.")
                 
-                
+                # Pequeno delay entre abates para o navegador não travar
                 time.sleep(0.2)
                 
             except Exception as e:
                 print(f"❌ Falha ao abater janela {janela.title}: {e}")
-                continue 
+                continue # Se falhar em uma, tenta a próxima. Não para.
                 
     except Exception as e:
         print(f"⚠️ Erro crítico no sistema de janelas: {e}")
+        
 async def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     iniciar_motor_som()
@@ -325,7 +315,7 @@ async def main():
             
             print(f"✅ COMANDO: {comando}")
             
-            
+            # --- SEÇÃO 1: COMANDOS RÁPIDOS (SEM IA) ---
             if not comando:
                 tocar_som_imediatamente(AUDIOS_FIXOS["dispor"])
                 continue
@@ -346,7 +336,7 @@ async def main():
                 tocar_som_imediatamente(AUDIOS_FIXOS["boa_noite"])
                 continue
             
-            if "que horas são" in comando:
+            if "horas" in comando:
                 agora = datetime.now()
                 await falar_tts(f"Agora são {agora.strftime('%H:%M')}.")
             
@@ -354,16 +344,17 @@ async def main():
             if "tocar" in comando:
                 musica = comando.replace("tocar", "").strip()
                 
-              
+                # --- CORREÇÃO DO BUG DE FAXINA ---
+                # 1. Primeiro verifica e fecha se tiver YouTube aberto (a música anterior)
                 fechar_youtube_se_aberto()
                 
-               
+                # 2. Depois toca a nova música (que abrirá uma nova aba)
                 pywhatkit.playonyt(musica)
                 
-              
+                # 3. Toca o som de confirmação
                 tocar_som_imediatamente(AUDIOS_FIXOS["youtube"])
                 
-          
+                # (O código redundante que tentava fechar janelas DEPOIS de abrir a nova foi removido daqui)
             
             elif "agendar" in comando or "marcar" in comando:
                 tocar_som_imediatamente(AUDIOS_FIXOS["compromisso"])
@@ -375,27 +366,30 @@ async def main():
             
          
             elif "volume" in comando and any(char.isdigit() for char in comando):
-                
+                # 1. Extrai o número
                 numeros = re.findall(r'\d+', comando)
                 
                 if numeros:
                     nivel_desejado = int(numeros[-1])
                     
+                    # Trava de segurança
                     if nivel_desejado > 100: nivel_desejado = 100
                     if nivel_desejado < 0: nivel_desejado = 0
                     
                     print(f"🔊 Resetando volume e subindo para {nivel_desejado}%...")
                     
-                    
+                    # 2. ZERA O VOLUME (Segurança)
+                    # Aumentei o delay para 0.02 para o Windows não engasgar
                     pyautogui.PAUSE = 0.02
                     for _ in range(50):
                         pyautogui.press('volumedown')
-                   
+                    
+                    # 3. SOBE ATÉ O NÍVEL (Cada clique sobe 2%)
                     steps = int(nivel_desejado / 2)
                     for _ in range(steps):
                         pyautogui.press('volumeup')
                         
-                   
+                    # 4. Volta a velocidade normal do PyAutoGUI
                     pyautogui.PAUSE = 0.1
                     
                     await falar_tts(f"Volume em {nivel_desejado} porcento.")
