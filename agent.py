@@ -16,10 +16,11 @@ import pytesseract
 import cv2
 import numpy as np
 import re
-
+import pygetwindow as gw
 
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 if not GROQ_API_KEY:
     print("❌ ERRO CRÍTICO: Não achei a GROQ_API_KEY no arquivo .env!")
     print("Crie um arquivo chamado .env e coloque: GROQ_API_KEY=sua_chave_aqui")
@@ -99,7 +100,7 @@ AUDIOS_FIXOS = {
     "maximo": os.path.join(PASTA_ASSETS, "maximo.mp3"),
     "off": os.path.join(PASTA_ASSETS, "desligando.mp3"),
     "analise": os.path.join(PASTA_ASSETS, "analise.mp3"),
-    "camera": os.path.join(PASTA_ASSETS, "camera.mp3") 
+    "camera": os.path.join(PASTA_ASSETS, "camera.mp3")
 }
 
 
@@ -221,11 +222,13 @@ DIRETRIZES DE SEGURANÇA:
 """
     return perguntar_groq(prompt_completo)
 
-
 def perguntar_groq(pergunta_usuario):
-   
+    
     agora = datetime.now()
     
+    data_formatada = agora.strftime("%A, %d/%m/%Y, às %H:%M")
+    
+    # 3. Agora sim pode usar a variável
     sistema_atualizado = f"{SYSTEM_PROMPT}\n\nCONTEXTO TEMPORAL ATUAL: Hoje é {data_formatada}. Responda considerando isso."
 
     print("🧠 Consultando o cérebro...")
@@ -236,7 +239,7 @@ def perguntar_groq(pergunta_usuario):
                 {"role": "user", "content": pergunta_usuario},
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0, 
+            temperature=0,
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
@@ -257,8 +260,50 @@ def ouvir_microfone():
             return comando.lower()
         except:
             return ""
+def fechar_youtube_se_aberto():
+    print("🧹 Iniciando protocolo de silenciamento do YouTube...")
+    try:
+    
+        todas_janelas = gw.getAllWindows()
+        
+        alvos = [j for j in todas_janelas if "youtube" in j.title.lower()]
+        
+        if not alvos:
+            print("⚠️ Nenhum alvo do YouTube detectado no radar.")
+            return
 
+        for janela in alvos:
+            try:
+                print(f"🎯 Alvo detectado: {janela.title}")
+                
+                if janela.isMinimized:
+                    try:
+                        janela.restore()
+                    except Exception:
+                        pass 
+                try:
+                    janela.activate()
+                except Exception as e:
+                    
+                    if "Error code from Windows: 0" in str(e):
+                        pass 
+                    else:
+                        print(f"⚠️ Aviso ao ativar janela (tentando fechar mesmo assim): {e}")
 
+                time.sleep(0.5) 
+                
+                pyautogui.hotkey('ctrl', 'w')
+                print("💥 Alvo neutralizado.")
+                
+                
+                time.sleep(0.2)
+                
+            except Exception as e:
+                print(f"❌ Falha ao abater janela {janela.title}: {e}")
+                continue 
+                
+    except Exception as e:
+        print(f"⚠️ Erro crítico no sistema de janelas: {e}")
 async def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     iniciar_motor_som()
@@ -280,7 +325,7 @@ async def main():
             
             print(f"✅ COMANDO: {comando}")
             
-            # --- SEÇÃO 1: COMANDOS RÁPIDOS (SEM IA) ---
+            
             if not comando:
                 tocar_som_imediatamente(AUDIOS_FIXOS["dispor"])
                 continue
@@ -301,14 +346,24 @@ async def main():
                 tocar_som_imediatamente(AUDIOS_FIXOS["boa_noite"])
                 continue
             
-            if "horas" in comando:
+            if "que horas são" in comando:
                 agora = datetime.now()
                 await falar_tts(f"Agora são {agora.strftime('%H:%M')}.")
             
-            elif "tocar" in comando:
+            
+            if "tocar" in comando:
                 musica = comando.replace("tocar", "").strip()
-                tocar_som_imediatamente(AUDIOS_FIXOS["youtube"])
+                
+              
+                fechar_youtube_se_aberto()
+                
+               
                 pywhatkit.playonyt(musica)
+                
+              
+                tocar_som_imediatamente(AUDIOS_FIXOS["youtube"])
+                
+          
             
             elif "agendar" in comando or "marcar" in comando:
                 tocar_som_imediatamente(AUDIOS_FIXOS["compromisso"])
@@ -318,22 +373,34 @@ async def main():
                 await falar_tts("Fechando.")
                 pyautogui.hotkey('ctrl', 'w')
             
-          
+         
             elif "volume" in comando and any(char.isdigit() for char in comando):
+                
                 numeros = re.findall(r'\d+', comando)
+                
                 if numeros:
                     nivel_desejado = int(numeros[-1])
+                    
                     if nivel_desejado > 100: nivel_desejado = 100
                     if nivel_desejado < 0: nivel_desejado = 0
-                    steps = int(nivel_desejado / 2)
-                    print(f"🔊 Ajustando volume para {nivel_desejado}%...")
-                    pyautogui.PAUSE = 0.01
-                    for _ in range(55): 
+                    
+                    print(f"🔊 Resetando volume e subindo para {nivel_desejado}%...")
+                    
+                    
+                    pyautogui.PAUSE = 0.02
+                    for _ in range(50):
                         pyautogui.press('volumedown')
+                   
+                    steps = int(nivel_desejado / 2)
                     for _ in range(steps):
                         pyautogui.press('volumeup')
+                        
+                   
                     pyautogui.PAUSE = 0.1
+                    
                     await falar_tts(f"Volume em {nivel_desejado} porcento.")
+                else:
+                    print("⚠️ Não entendi o número do volume.")
 
             elif any(p in comando for p in ["volume máximo", "volume no máximo", "som no máximo"]):
                 tocar_som_imediatamente(AUDIOS_FIXOS["maximo"])
@@ -351,14 +418,6 @@ async def main():
                 os.system("shutdown /s /t 0")
                 break
             
-          
-            elif any(p in comando for p in ["modo sexo", "hora do sexo", "ativar o clima", "protocolo romântico", "hora de gozar"]):
-                
-                pywhatkit.playonyt("Giveon Drake Bryson Tiller chill mix")
-                tocar_som_imediatamente(AUDIOS_FIXOS["youtube"])
-                
-                await falar_tts("Ativando Protocolo de Acasalamento. Aumentando as chances em 30%, senhor.")
-                print(" Soltando o som...")
 
             elif any(p in comando for p in ["o que você vê", "descrever tela", "que tá na tela", "problema nesse código", "qual o problema", "resolva esse problema"]):
                 tocar_som_imediatamente(AUDIOS_FIXOS["analise"])
@@ -377,7 +436,7 @@ async def main():
             elif any(p in comando for p in ["debugar visualmente"]):
                  await falar_tts("Usando visão computacional na tela.")
                 
-                 pass 
+                 pass
 
             else:
                 resposta_ia = perguntar_groq(comando)
