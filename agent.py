@@ -19,6 +19,7 @@ import numpy as np
 import re
 import pygetwindow as gw
 
+
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
@@ -119,7 +120,8 @@ NOMES_JARVIS = [
     "harvest", "harvist", "harves", "travis", "trevis", "treves",
     "elvis", "alvis", "alvez", "davis", "devis", "devs", "david", "davids",
     # reconhecimento lixo total mas acontece
-    "varvis", "yarvis", "iarvis", "orvis", "arvis", "ervis", "carvis", "tarvis", "parvis"
+    "varvis", "yarvis", "iarvis", "orvis", "arvis", "ervis", "carvis", "tarvis", "parvis",
+    "zarviz", "zarvis", "jar", "jabes", "jogos", "jales", "james", "jack", "barbie"
 ]
 
 
@@ -247,13 +249,16 @@ def perguntar_groq(pergunta_usuario):
 def ouvir_microfone():
     rec = sr.Recognizer()
     rec.pause_threshold = 0.5
-    rec.dynamic_energy_threshold = False
-    rec.energy_threshold = 400
+    rec.dynamic_energy_threshold = True 
     
     with sr.Microphone() as source:
+        # ISSO É CRUCIAL: AJUSTA O RUÍDO ANTES DE ESCUTAR
+        # O 'duration=0.5' calibra rápido. Se sua sala for barulhenta, aumente para 1.
+        rec.adjust_for_ambient_noise(source, duration=0.5)
         try:
-            audio = rec.listen(source, timeout=3, phrase_time_limit=5)
+            audio = rec.listen(source, timeout=4, phrase_time_limit=5)
             comando = rec.recognize_google(audio, language="pt-BR")
+            print(comando)
             return comando.lower()
         except:
             return ""
@@ -295,6 +300,7 @@ def fechar_youtube_se_aberto():
         print(f"⚠️ Erro crítico no sistema de janelas: {e}")
         
 async def main():
+    
     os.system('cls' if os.name == 'nt' else 'clear')
     iniciar_motor_som()
     
@@ -303,6 +309,7 @@ async def main():
     
     tocar_som_imediatamente(AUDIOS_FIXOS["acordei"])
     
+
     while True:
         comando_bruto = ouvir_microfone()
         if not comando_bruto:
@@ -315,12 +322,12 @@ async def main():
             
             print(f"✅ COMANDO: {comando}")
             
-            # --- SEÇÃO 1: COMANDOS RÁPIDOS (SEM IA) ---
+           
             if not comando:
                 tocar_som_imediatamente(AUDIOS_FIXOS["dispor"])
                 continue
             
-            if "está aí" in comando or "tá aí" in comando or "status" in comando:
+            if "está aí" in comando or "tá aí" in comando or "status" in comando or "tá ouvindo" in comando or "está ouvindo" in comando:
                 tocar_som_imediatamente(AUDIOS_FIXOS["estou_aqui"])
                 continue
             
@@ -406,6 +413,7 @@ async def main():
             elif any(p in comando for p in ["mudo", "volume mínimo" , "volume no mínimo" , "sem som"]):
                 tocar_som_imediatamente(AUDIOS_FIXOS["mute"])
                 pyautogui.press('volumemute')
+            
             
             elif any(p in comando for p in ["dormir", "hora de dormir", "desligar"]):
                 tocar_som_imediatamente(AUDIOS_FIXOS["off"])
